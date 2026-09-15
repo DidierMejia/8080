@@ -192,6 +192,8 @@ La FPU-32 incluida en este proyecto es una propuesta educativa que simula cómo 
 Estudiante de Ingeniería en Sistemas  
 Universidad Mariano Gálvez de Guatemala
 
+Enlace: https://didiermejia.github.io/8080/
+
 ## Créditos
 
 Proyecto original:

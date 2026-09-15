@@ -1,103 +1,541 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intel 8080 Emulator & Assembler</title>
+    <meta name="description" content="Emulador educativo Intel 8080 con coprocesador de punto flotante IEEE-754 conceptual.">
+    <title>Intel 8080 + FPU-32 | Laboratorio de Arquitectura</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <header>
+
+<body class="simple-mode">
+
+    <header class="site-header">
         <div class="header-container">
-            <h1>Intel 8080 Emulator & Assembler</h1>
-            <span class="version-badge">Version 2.1</span>
+            <div>
+                <p class="eyebrow">ARQUITECTURA DE COMPUTADORAS II</p>
+                <h1>Intel 8080 <span>+</span> FPU-32</h1>
+                <p class="subtitle">
+                    Emulador y ensamblador con coprocesador de punto flotante conceptual
+                </p>
+            </div>
+
+            <div class="header-actions">
+                <span class="version-badge">Versión 3.0</span>
+                <a href="#arquitectura" class="ghost-button technical-only">
+                    Ver arquitectura
+                </a>
+            </div>
         </div>
     </header>
 
+    <nav class="mode-selector" aria-label="Seleccionar modo de uso">
+        <span>Selecciona el nivel:</span>
+
+        <button id="btn-simple-mode" class="mode-button active">
+            Modo sencillo
+        </button>
+
+        <button id="btn-technical-mode" class="mode-button">
+            Modo técnico 8080
+        </button>
+    </nav>
+
     <main>
-        <section id="editor-section">
-            <h2>Assembler</h2>
-            <textarea id="code-editor" spellcheck="false" placeholder="Write your 8080 assembly here...
-Example:
-MVI A, 5
-MVI B, 10
-ADD B
-STA 2000H
-HLT"></textarea>
-            <div class="controls">
-                <button id="btn-assemble">Assemble & Load</button>
-                <button id="btn-clear-code" class="btn-clear">Clear Code</button>
+
+        <!-- EDITOR DE ENSAMBLADOR -->
+        <section id="editor-section" class="panel editor-panel technical-only">
+
+            <div class="section-heading">
+                <div>
+                    <span class="step-number">01</span>
+                    <h2>Programa 8080</h2>
+                </div>
+
+                <button id="btn-example" class="btn-secondary">
+                    Cargar demostración
+                </button>
             </div>
-            <div id="assembler-output"></div>
+
+            <p class="section-copy">
+                El acumulador A intercambia bytes con la FPU mediante
+                los puertos F0h-F3h.
+            </p>
+
+            <textarea
+                id="code-editor"
+                spellcheck="false"
+                aria-label="Editor de código ensamblador"
+                placeholder="Escribe tu programa Intel 8080..."
+            ></textarea>
+
+            <div class="controls">
+                <button id="btn-assemble">
+                    Ensamblar y cargar
+                </button>
+
+                <button id="btn-clear-code" class="btn-muted">
+                    Limpiar código
+                </button>
+            </div>
+
+            <div
+                id="assembler-output"
+                role="status"
+                aria-live="polite"
+            ></div>
+
+            <div class="port-reference">
+                <h3>Mapa de puertos de la FPU</h3>
+
+                <div class="port-row">
+                    <code>F0h</code>
+                    <span>OUT</span>
+                    <p>Carga 8 bytes: X y Y en IEEE-754</p>
+                </div>
+
+                <div class="port-row">
+                    <code>F1h</code>
+                    <span>OUT</span>
+                    <p>Envía el código de operación</p>
+                </div>
+
+                <div class="port-row">
+                    <code>F2h</code>
+                    <span>IN</span>
+                    <p>Lee las banderas de estado</p>
+                </div>
+
+                <div class="port-row">
+                    <code>F3h</code>
+                    <span>IN</span>
+                    <p>Lee 4 bytes del resultado</p>
+                </div>
+            </div>
         </section>
 
-        <section id="emulator-section">
-            <h2>CPU Dashboard</h2>
-            <div class="controls">
-                <button id="btn-run">Run</button>
-                <button id="btn-stop">Stop</button>
-                <button id="btn-step">Step</button>
-                <button id="btn-reset">Reset</button>
-                <span id="status-badge">Idle</span>
+        <!-- ÁREA PRINCIPAL -->
+        <section id="emulator-section" class="panel workspace-panel">
+
+            <div class="section-heading">
+                <div>
+                    <span class="step-number">02</span>
+                    <h2 id="workspace-title">Calculadora FPU-32</h2>
+                </div>
+
+                <span id="status-badge" class="status idle technical-only">
+                    En espera
+                </span>
+            </div>
+
+            <p id="simple-description" class="section-copy">
+                Ingresa dos números, selecciona una operación y observa cómo
+                el coprocesador representa el resultado en formato IEEE-754.
+            </p>
+
+            <div class="controls execution-controls technical-only">
+                <button id="btn-run">▶ Ejecutar</button>
+                <button id="btn-stop" class="btn-warning">■ Detener</button>
+                <button id="btn-step" class="btn-secondary">Paso</button>
+                <button id="btn-reset" class="btn-muted">Reiniciar</button>
             </div>
 
             <div class="cpu-grid">
-                <div class="card registers">
-                    <h3>Registers</h3>
-                    <div class="reg-row">
-                        <div class="reg-box"><span>A</span><div id="reg-a">00</div></div>
-                        <div class="reg-box"><span>Flags</span><div id="reg-f">02</div></div>
-                    </div>
-                    <div class="reg-row">
-                        <div class="reg-box"><span>B</span><div id="reg-b">00</div></div>
-                        <div class="reg-box"><span>C</span><div id="reg-c">00</div></div>
-                    </div>
-                    <div class="reg-row">
-                        <div class="reg-box"><span>D</span><div id="reg-d">00</div></div>
-                        <div class="reg-box"><span>E</span><div id="reg-e">00</div></div>
-                    </div>
-                    <div class="reg-row">
-                        <div class="reg-box"><span>H</span><div id="reg-h">00</div></div>
-                        <div class="reg-box"><span>L</span><div id="reg-l">00</div></div>
-                    </div>
-                    <div class="reg-row">
-                        <div class="reg-box extended"><span>PC</span><div id="reg-pc">0000</div></div>
-                        <div class="reg-box extended"><span>SP</span><div id="reg-sp">FFFF</div></div>
-                    </div>
-                </div>
 
-                <div class="dashboard-right">
-                    <div class="card flags">
-                        <h3>Flags</h3>
-                        <div class="flags-row">
-                            <div class="flag-box" title="Sign Flag (Signo): Se activa (1) si el bit más significativo (bit 7) del resultado es 1, indicando un número negativo."><span>S</span><div id="flag-s">0</div></div>
-                            <div class="flag-box" title="Zero Flag (Cero): Se activa (1) si el resultado de la última operación fue exactamente cero."><span>Z</span><div id="flag-z">0</div></div>
-                            <div class="flag-box" title="Auxiliary Carry Flag (Acarreo Auxiliar): Se activa (1) si hay un acarreo del bit 3 al bit 4 en una suma, o si no hay préstamo en una resta. Es utilizado por DAA."><span>AC</span><div id="flag-ac">0</div></div>
-                            <div class="flag-box" title="Parity Flag (Paridad): Se activa (1) si el resultado tiene un número par de bits en 1."><span>P</span><div id="flag-p">0</div></div>
-                            <div class="flag-box" title="Carry Flag (Acarreo): Se activa (1) si la última operación generó un acarreo (en suma) o un préstamo (en resta) fuera del bit más significativo."><span>CY</span><div id="flag-cy">0</div></div>
+                <!-- REGISTROS DEL 8080 -->
+                <article class="card registers technical-only">
+                    <div class="card-title">
+                        <h3>CPU Intel 8080</h3>
+                        <span>8 bits</span>
+                    </div>
+
+                    <div class="reg-row">
+                        <div class="reg-box accent">
+                            <span>A</span>
+                            <div id="reg-a">00</div>
+                        </div>
+
+                        <div class="reg-box">
+                            <span>FLAGS</span>
+                            <div id="reg-f">02</div>
                         </div>
                     </div>
 
-                    <div class="card stack">
-                        <h3>Stack View (around SP)</h3>
-                        <div id="stack-table"></div>
+                    <div class="reg-row">
+                        <div class="reg-box">
+                            <span>B</span>
+                            <div id="reg-b">00</div>
+                        </div>
+
+                        <div class="reg-box">
+                            <span>C</span>
+                            <div id="reg-c">00</div>
+                        </div>
+
+                        <div class="reg-box">
+                            <span>D</span>
+                            <div id="reg-d">00</div>
+                        </div>
+
+                        <div class="reg-box">
+                            <span>E</span>
+                            <div id="reg-e">00</div>
+                        </div>
+                    </div>
+
+                    <div class="reg-row">
+                        <div class="reg-box">
+                            <span>H</span>
+                            <div id="reg-h">00</div>
+                        </div>
+
+                        <div class="reg-box">
+                            <span>L</span>
+                            <div id="reg-l">00</div>
+                        </div>
+
+                        <div class="reg-box extended">
+                            <span>PC</span>
+                            <div id="reg-pc">0000</div>
+                        </div>
+
+                        <div class="reg-box extended">
+                            <span>SP</span>
+                            <div id="reg-sp">FFFF</div>
+                        </div>
+                    </div>
+
+                    <div class="flags-row cpu-flags">
+                        <div class="flag-box" title="Bandera de signo">
+                            <span>S</span>
+                            <div id="flag-s">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Bandera de cero">
+                            <span>Z</span>
+                            <div id="flag-z">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Acarreo auxiliar">
+                            <span>AC</span>
+                            <div id="flag-ac">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Bandera de paridad">
+                            <span>P</span>
+                            <div id="flag-p">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Bandera de acarreo">
+                            <span>CY</span>
+                            <div id="flag-cy">0</div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- PANEL DE LA FPU -->
+                <article class="card fpu-card">
+                    <div class="card-title">
+                        <h3>Coprocesador FPU-32</h3>
+                        <span>IEEE-754</span>
+                    </div>
+
+                    <div class="fpu-operation">
+                        <div>
+                            <small>OPERANDO X</small>
+                            <strong id="fpu-x">0</strong>
+                            <code id="fpu-x-hex">00 00 00 00</code>
+                        </div>
+
+                        <b id="fpu-symbol">?</b>
+
+                        <div>
+                            <small>OPERANDO Y</small>
+                            <strong id="fpu-y">0</strong>
+                            <code id="fpu-y-hex">00 00 00 00</code>
+                        </div>
+                    </div>
+
+                    <div class="result-display">
+                        <span>RESULTADO</span>
+                        <strong id="fpu-result">0</strong>
+                        <code id="fpu-result-hex">00 00 00 00</code>
+                    </div>
+
+                    <div class="flags-row fpu-flags">
+                        <div class="flag-box" title="Resultado disponible">
+                            <span>READY</span>
+                            <div id="fpu-ready">1</div>
+                        </div>
+
+                        <div class="flag-box" title="Resultado igual a cero">
+                            <span>ZERO</span>
+                            <div id="fpu-zero">1</div>
+                        </div>
+
+                        <div class="flag-box" title="Resultado negativo">
+                            <span>NEG</span>
+                            <div id="fpu-negative">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Desbordamiento">
+                            <span>OVF</span>
+                            <div id="fpu-overflow">0</div>
+                        </div>
+
+                        <div class="flag-box" title="División entre cero">
+                            <span>DIV/0</span>
+                            <div id="fpu-divzero">0</div>
+                        </div>
+
+                        <div class="flag-box" title="Operación inválida">
+                            <span>INV</span>
+                            <div id="fpu-invalid">0</div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- CALCULADORA -->
+                <article class="card manual-console">
+                    <div class="card-title">
+                        <h3>Calculadora de punto flotante</h3>
+                        <span>Modo interactivo</span>
+                    </div>
+
+                    <div class="input-grid">
+                        <label>
+                            Operando X
+                            <input
+                                id="manual-x"
+                                type="number"
+                                step="any"
+                                value="1.5"
+                            >
+                        </label>
+
+                        <label>
+                            Operación
+                            <select id="manual-operation">
+                                <option value="1">Suma (+)</option>
+                                <option value="2">Resta (-)</option>
+                                <option value="3">Multiplicación (×)</option>
+                                <option value="4">División (÷)</option>
+                                <option value="5">Raíz cuadrada (√X)</option>
+                            </select>
+                        </label>
+
+                        <label>
+                            Operando Y
+                            <input
+                                id="manual-y"
+                                type="number"
+                                step="any"
+                                value="2.25"
+                            >
+                        </label>
+
+                        <button id="btn-calculate">
+                            Calcular en FPU
+                        </button>
+                    </div>
+
+                    <div class="example-buttons">
+                        <span>Pruebas rápidas:</span>
+
+                        <button
+                            class="example-operation"
+                            data-x="1.5"
+                            data-y="2.25"
+                            data-operation="1"
+                        >
+                            1.5 + 2.25
+                        </button>
+
+                        <button
+                            class="example-operation"
+                            data-x="7.5"
+                            data-y="4"
+                            data-operation="3"
+                        >
+                            7.5 × 4
+                        </button>
+
+                        <button
+                            class="example-operation"
+                            data-x="10"
+                            data-y="0"
+                            data-operation="4"
+                        >
+                            10 ÷ 0
+                        </button>
+
+                        <button
+                            class="example-operation"
+                            data-x="9"
+                            data-y="0"
+                            data-operation="5"
+                        >
+                            √9
+                        </button>
+                    </div>
+
+                    <div id="calculation-message" aria-live="polite"></div>
+                </article>
+
+                <!-- GRÁFICA -->
+                <article class="card chart-card">
+                    <div class="card-title">
+                        <h3>Historial de resultados</h3>
+                        <span>Gráfica dinámica</span>
+                    </div>
+
+                    <div
+                        id="fpu-chart"
+                        class="chart"
+                        aria-label="Gráfica del historial de resultados"
+                    ></div>
+                </article>
+
+                <!-- PILA -->
+                <article class="card stack technical-only">
+                    <div class="card-title">
+                        <h3>Pila</h3>
+                        <span>Alrededor de SP</span>
+                    </div>
+
+                    <div id="stack-table"></div>
+                </article>
+
+                <!-- MEMORIA -->
+                <article class="card memory technical-only">
+                    <div class="card-title">
+                        <h3>Memoria RAM</h3>
+
+                        <div class="mem-controls">
+                            <input
+                                type="text"
+                                id="mem-start-addr"
+                                value="0000"
+                                size="4"
+                                aria-label="Dirección inicial de memoria"
+                            >
+
+                            <button id="btn-mem-go" class="btn-secondary">
+                                Ir
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="memory-table"></div>
+                </article>
+
+            </div>
+        </section>
+
+        <!-- DIAGRAMA -->
+        <section
+            id="arquitectura"
+            class="panel architecture-panel technical-only"
+        >
+            <div class="section-heading">
+                <div>
+                    <span class="step-number">03</span>
+                    <h2>Integración conceptual</h2>
+                </div>
+
+                <span class="concept-badge">
+                    Arquitectura de E/S aislada
+                </span>
+            </div>
+
+            <div class="architecture-grid">
+                <div
+                    class="architecture-diagram"
+                    role="img"
+                    aria-label="Flujo entre programa, CPU 8080 y coprocesador FPU"
+                >
+                    <div class="diagram-node software">
+                        <small>SOFTWARE</small>
+                        <strong>Programa ASM</strong>
+                        <span>IN / OUT</span>
+                    </div>
+
+                    <div class="diagram-arrow">
+                        <span>opcodes</span>
+                        →
+                    </div>
+
+                    <div class="diagram-node cpu">
+                        <small>PROCESADOR</small>
+                        <strong>Intel 8080</strong>
+                        <span>Acumulador A</span>
+                    </div>
+
+                    <div class="diagram-arrow">
+                        <span>bus de E/S</span>
+                        ⇄
+                    </div>
+
+                    <div class="diagram-node fpu">
+                        <small>COPROCESADOR</small>
+                        <strong>FPU-32</strong>
+                        <span>IEEE-754</span>
                     </div>
                 </div>
 
-                <div class="card memory">
-                    <h3>Memory View</h3>
-                    <div class="mem-controls">
-                        <input type="text" id="mem-start-addr" value="0000" size="4">
-                        <button id="btn-mem-go">Go</button>
-                    </div>
-                    <div id="memory-table"></div>
+                <div class="explanation">
+                    <h3>¿Qué ocurre en cada cálculo?</h3>
+
+                    <ol>
+                        <li>
+                            El 8080 envía dos operandos de 32 bits,
+                            byte a byte, al puerto <code>F0h</code>.
+                        </li>
+
+                        <li>
+                            Escribe un comando en <code>F1h</code>;
+                            la FPU decodifica y calcula.
+                        </li>
+
+                        <li>
+                            El CPU consulta el estado en
+                            <code>F2h</code> y recibe el resultado
+                            desde <code>F3h</code>.
+                        </li>
+
+                        <li>
+                            Los cuatro bytes reconstruyen un número
+                            de precisión simple IEEE-754.
+                        </li>
+                    </ol>
+
+                    <p class="note">
+                        <strong>Alcance conceptual:</strong>
+                        el Intel 8080 real no incluía una FPU.
+                        Esta propuesta modela cómo podría delegar
+                        cálculos flotantes a hardware externo mediante
+                        sus instrucciones de entrada y salida.
+                    </p>
                 </div>
             </div>
         </section>
+
     </main>
+
+    <footer>
+        <span>
+            Proyecto académico · Arquitectura de Computadoras II
+        </span>
+
+        <span>
+            HTML5 · CSS3 · JavaScript
+        </span>
+    </footer>
 
     <script src="cpu.js"></script>
     <script src="assembler.js"></script>
+    <script src="fpu.js"></script>
     <script src="main.js"></script>
+
 </body>
 </html>

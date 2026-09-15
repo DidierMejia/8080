@@ -1,7 +1,16 @@
 class Intel8080 {
     constructor() {
         this.memory = new Uint8Array(65536);
+        this.io = {
+            read: () => 0,
+            write: () => {}
+        };
         this.reset();
+    }
+
+    connectIO(readHandler, writeHandler) {
+        this.io.read = typeof readHandler === 'function' ? readHandler : (() => 0);
+        this.io.write = typeof writeHandler === 'function' ? writeHandler : (() => {});
     }
 
     reset() {
@@ -266,8 +275,16 @@ class Intel8080 {
             case 0x3F: this.flags.cy = !this.flags.cy; break; // CMC
 
             // Special
-            case 0xDB: this.fetch(); break; // IN (Ignored for now)
-            case 0xD3: this.fetch(); break; // OUT (Ignored for now)
+            case 0xDB: { // IN port
+                const port = this.fetch();
+                this.registers.a = this.io.read(port) & 0xFF;
+                break;
+            }
+            case 0xD3: { // OUT port
+                const port = this.fetch();
+                this.io.write(port, this.registers.a & 0xFF);
+                break;
+            }
             case 0xFB: break; // EI
             case 0xF3: break; // DI
         }

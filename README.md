@@ -1,74 +1,119 @@
-# Intel 8080 CPU Emulator & Assembler - Version 2.1.0
+# Intel 8080 + FPU-32 - Emulador y Ensamblador Web
 
-Bienvenidos al emulador y ensamblador de la arquitectura Intel 8080. Este proyecto ha sido construido desde cero utilizando tecnología 100% web pura (HTML5, CSS3 y Vanilla JavaScript) sin frameworks ni dependencias de ningún tipo, garantizando una carga instantánea y la máxima compatibilidad educativa.
+Extensión académica del proyecto [Intel 8080 CPU Emulator & Assembler](https://github.com/alexeiiw/8080), creada para integrar conceptualmente un coprocesador de punto flotante al Intel 8080.
 
----
+El proyecto conserva su naturaleza 100 % web: HTML5, CSS3 y JavaScript puro, sin frameworks ni dependencias de ejecución.
 
-## 🌟 ¿Por qué nació este proyecto? (Historia y Propósito)
+## Objetivo
 
-En la enseñanza de la informática y la ingeniería de sistemas, existe una brecha pedagógica crítica al transicionar de lenguajes de alto nivel (como Python, Java o JavaScript) al entendimiento del hardware real. Los simuladores tradicionales de bajo nivel suelen ser difíciles de instalar, tienen interfaces obsoletas o carecen de feedback visual inmediato.
+Demostrar cómo un procesador Intel 8080, que no posee una unidad de punto flotante integrada, podría delegar cálculos a un coprocesador externo mediante las instrucciones `IN` y `OUT` y un conjunto definido de puertos de entrada/salida.
 
-**Este simulador nació con el propósito de resolver este problema.** Su objetivo es democratizar la enseñanza de la arquitectura de computadoras proporcionando un entorno gráfico intuitivo, interactivo y moderno. Permite a los estudiantes "ver dentro" de una unidad central de procesamiento (CPU): observar cómo cambian los registros paso a paso, cómo fluyen los datos en la memoria RAM y cómo se comportan las banderas de estado (*flags*) en respuesta a operaciones aritméticas elementales.
+La FPU conceptual utiliza precisión simple IEEE-754 de 32 bits y admite:
 
----
+- Suma
+- Resta
+- Multiplicación
+- División
+- Raíz cuadrada
+- Detección de cero, negativo, desbordamiento, división por cero y operación inválida
 
-## 🛠️ ¿Para qué sirve?
+## Arquitectura conceptual
 
-*   **Enseñanza Didáctica y Práctica:** Ideal para profesores y estudiantes de ciencias de la computación que desean experimentar la programación en lenguaje ensamblador sin la fricción de instalar herramientas en sistemas operativos locales.
-*   **Visualización de Flujo de Datos:** El panel interactivo permite observar las dinámicas de:
-    *   Los registros de propósito general y específicos.
-    *   Las operaciones de pila (*Stack*) con seguimiento visual directo de la dirección apuntada por `SP`.
-    *   La memoria RAM desglosada en un mapa bidimensional interactivo con localización instantánea.
-*   **Depuración Paso a Paso (*Debugging*):** Permite ejecutar programas instrucción por instrucción, deteniendo y analizando el procesador para encontrar errores de lógica con facilidad.
+```mermaid
+flowchart LR
+    ASM[Programa ensamblador] -->|IN / OUT| CPU[Intel 8080]
+    CPU <-->|Bus de E/S de 8 bits| FPU[FPU-32 IEEE-754]
+```
 
----
+Como el acumulador `A` del 8080 es de 8 bits, cada operando flotante se transmite en cuatro operaciones de salida. Dos operandos requieren ocho bytes. El resultado se recupera también en cuatro lecturas.
 
-## 🚀 Novedades de la Versión 2.1.0
+## Mapa de puertos
 
-Esta versión representa un gran salto adelante en la calidad del entorno de desarrollo web:
-- **Visualizador de Pila (*Stack View*):** Un componente visual que muestra los valores de 16 bits y bytes individuales que se encuentran en las posiciones de memoria alrededor de la dirección del puntero de pila (`SP`).
-- **Banderas Explicadas (*Tooltips*):** Al colocar el puntero del ratón sobre cualquiera de las banderas de estado (`S`, `Z`, `AC`, `P`, `CY`), se muestra un tooltip detallado en español explicando su lógica.
-- **Botón Clear Code:** Permite vaciar el editor del ensamblador y sus salidas con un solo clic.
-- **Reset Profundo:** Al reiniciar el CPU, se limpia la memoria por completo (rellenando con ceros), se resetean todos los registros, banderas y el visor de memoria se restablece a la dirección inicial `0000`.
+| Puerto | Dirección | Función |
+|---|---|---|
+| Datos | `F0h` - salida | Recibe 4 bytes de X y 4 bytes de Y, en orden little-endian |
+| Control | `F1h` - salida | Recibe el código de la operación |
+| Estado | `F2h` - entrada | Devuelve las banderas de la FPU |
+| Resultado | `F3h` - entrada | Entrega los 4 bytes del resultado, en orden little-endian |
 
----
+### Códigos de operación
 
-## 📦 Características Principales
+| Código | Operación |
+|---|---|
+| `01h` | Suma: X + Y |
+| `02h` | Resta: X - Y |
+| `03h` | Multiplicación: X × Y |
+| `04h` | División: X ÷ Y |
+| `05h` | Raíz cuadrada: √X |
+| `06h` | Limpiar la FPU |
 
-*   **Núcleo de CPU Intel 8080 Completo:**
-    *   Emulación fiel del juego de instrucciones.
-    *   Gestión precisa de banderas (Sign, Zero, Auxiliary Carry, Parity, Carry).
-    *   Soporte completo de la instrucción decimal `DAA`.
-*   **Ensamblador Integrado:**
-    *   Soporta mnemónicos estándar, etiquetas (labels) y comentarios.
-    *   Directivas especiales como `ORG` (Origin) y `DB` (Define Byte).
-    *   Soporta alias de registros dobles (`BC`, `DE`, `HL`).
-*   **Cuadro de Mando Visual (Dashboard):**
-    *   Registros en tiempo real.
-    *   Estado del CPU (Ejecutando, En pausa, Halted).
-*   **Mapa de Memoria Dinámico:**
-    *   Visor de memoria con búsqueda hexadecimal y marcado de color para la posición actual del Program Counter (`PC`).
+### Registro de estado
 
----
+| Bit | Máscara | Bandera |
+|---|---|---|
+| 0 | `01h` | READY: resultado disponible |
+| 1 | `02h` | ZERO: resultado igual a cero |
+| 2 | `04h` | NEG: resultado negativo |
+| 3 | `08h` | OVF: resultado infinito/desbordado |
+| 4 | `10h` | DIV/0: división por cero |
+| 5 | `20h` | INV: operación inválida o NaN |
 
-## 💻 Guía de Inicio Rápido
+## Demostración incluida
 
-Para utilizar el emulador de forma local en tu máquina o para desarrollo:
+El editor carga un ejemplo que suma `1.5 + 2.25`:
 
-1. **Clonar o descargar** este repositorio.
-2. Servir el proyecto localmente mediante cualquier servidor web estático. Por ejemplo, si tienes Python instalado, ejecuta en la terminal de la raíz:
-   ```bash
-   python3 -m http.server 8000
-   ```
-3. Abre tu navegador e ingresa a `http://localhost:8000`.
-4. ¡Comienza a escribir código ensamblador, presiona **Assemble & Load**, y ejecuta tu programa con **Run** o **Step**!
+1. `1.5` se representa como `3FC00000h`, transmitido `00 00 C0 3F`.
+2. `2.25` se representa como `40100000h`, transmitido `00 00 10 40`.
+3. El comando `01h` solicita la suma.
+4. La FPU entrega `00 00 70 40`, que representa `3.75`.
+5. Los bytes del resultado quedan además en los registros `B`, `C`, `D` y `E`.
 
----
+## Interfaz gráfica
 
-## 📝 Documentación Recomendada
+El sitio incluye:
 
-*   **`INSTRUCTIONS.md`:** Nuestro libro didáctico interactivo diseñado específicamente para que los estudiantes de alto nivel aprendan el funcionamiento práctico del ensamblador paso a paso, con guías estructuradas de aritmética, ciclos, condicionales y la pila.
+- Editor y ensamblador Intel 8080.
+- Ejecución continua y paso a paso.
+- Registros, banderas, pila y mapa de memoria.
+- Panel FPU con operandos, resultado y representación hexadecimal.
+- Consola directa para probar todas las operaciones.
+- Gráfica dinámica del historial de resultados.
+- Diagrama visual del flujo CPU-coprocesador.
 
----
-**Versión del Proyecto:** 2.1.0
-**Licencia:** MIT
+## Ejecutar localmente
+
+Desde la carpeta del proyecto:
+
+```bash
+python3 -m http.server 8000
+```
+
+Abrir `http://localhost:8000` en el navegador.
+
+También se puede abrir `index.html` directamente, aunque se recomienda usar un servidor local.
+
+## Pruebas
+
+```bash
+node test.js
+```
+
+Las pruebas cubren el emulador original, conversión IEEE-754, comunicación `IN`/`OUT`, suma completa y excepciones de la FPU.
+
+## Publicar con GitHub Pages
+
+1. Subir esta rama al fork personal.
+2. Abrir **Settings > Pages**.
+3. En **Build and deployment**, elegir **Deploy from a branch**.
+4. Seleccionar la rama principal y la carpeta `/ (root)`.
+5. Guardar y esperar a que GitHub muestre la URL publicada.
+
+## Demostración en video
+
+La guía lista para grabar se encuentra en [VIDEO_DEMO.md](VIDEO_DEMO.md).
+
+## Créditos y alcance
+
+- Proyecto base: [alexeiiw/8080](https://github.com/alexeiiw/8080).
+- Extensión: integración conceptual FPU-32 para fines educativos.
+- El Intel 8080 histórico no incorporaba una FPU ni trabajaba directamente con IEEE-754. La propuesta no pretende reproducir hardware histórico existente; modela una interfaz externa plausible utilizando la capacidad real de E/S aislada del procesador.

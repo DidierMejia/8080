@@ -1,6 +1,7 @@
 // test.js - Unit tests for Intel 8080 CPU and Assembler
 const Intel8080 = require('./cpu.js');
 const Assembler8080 = require('./assembler.js');
+const FloatingPointCoprocessor = require('./fpu.js');
 const assert = require('assert');
 
 console.log('--- Running Intel 8080 Emulator & Assembler Tests ---');
@@ -150,6 +151,71 @@ runTest('Assembler Rejects Invalid Code & Registers', () => {
     assert.throws(() => {
         assembler.assemble('JMP UNDEFINED_LABEL');
     }, /Undefined label/i);
+});
+
+runTest('FPU Converts IEEE-754 Single Precision Values', () => {
+    const fpu = new FloatingPointCoprocessor();
+    assert.deepStrictEqual(fpu.floatToBytes(1.5), [0x00, 0x00, 0xC0, 0x3F]);
+    assert.strictEqual(fpu.bytesToFloat([0x00, 0x00, 0x10, 0x40]), 2.25);
+});
+
+runTest('8080 Communicates With FPU Through IN and OUT', () => {
+    const cpu = new Intel8080();
+    const fpu = new FloatingPointCoprocessor();
+    const assembler = new Assembler8080();
+    cpu.connectIO(port => fpu.readPort(port), (port, value) => fpu.writePort(port, value));
+
+    const source = `
+        MVI A, 00H
+        OUT F0H
+        MVI A, 00H
+        OUT F0H
+        MVI A, C0H
+        OUT F0H
+        MVI A, 3FH
+        OUT F0H
+        MVI A, 00H
+        OUT F0H
+        MVI A, 00H
+        OUT F0H
+        MVI A, 10H
+        OUT F0H
+        MVI A, 40H
+        OUT F0H
+        MVI A, 01H
+        OUT F1H
+        IN F2H
+        MOV H, A
+        IN F3H
+        MOV B, A
+        IN F3H
+        MOV C, A
+        IN F3H
+        MOV D, A
+        IN F3H
+        MOV E, A
+        HLT
+    `;
+    cpu.memory.set(assembler.assemble(source).binary);
+    while (!cpu.halted) cpu.step();
+
+    assert.strictEqual(fpu.result, 3.75);
+    assert.strictEqual(cpu.registers.h, 0x01, 'READY status bit should be set');
+    assert.deepStrictEqual([cpu.registers.b, cpu.registers.c, cpu.registers.d, cpu.registers.e], [0x00, 0x00, 0x70, 0x40]);
+});
+
+runTest('FPU Reports Division by Zero and Invalid Square Root', () => {
+    const fpu = new FloatingPointCoprocessor();
+    fpu.loadOperands(5, 0);
+    fpu.execute(0x04);
+    assert.strictEqual(fpu.result, Infinity);
+    assert.strictEqual(fpu.status.divideByZero, true);
+    assert.strictEqual(fpu.status.overflow, true);
+
+    fpu.loadOperands(-4, 0);
+    fpu.execute(0x05);
+    assert.strictEqual(Number.isNaN(fpu.result), true);
+    assert.strictEqual(fpu.status.invalid, true);
 });
 
 console.log('All tests completed successfully!');

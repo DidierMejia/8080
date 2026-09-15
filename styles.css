@@ -146,8 +146,7 @@ main {
 }
 
 .editor-panel {
-    position: sticky;
-    top: 16px;
+    position: static;
 }
 
 .workspace-panel {

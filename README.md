@@ -4,6 +4,12 @@ Proyecto académico desarrollado para el curso de Arquitectura de Computadoras I
 
 Esta aplicación amplía un emulador del procesador Intel 8080 mediante la integración conceptual de un coprocesador de punto flotante FPU-32.
 
+## Sitio web
+
+La demostración interactiva del proyecto se encuentra disponible en:
+
+[https://didiermejia.github.io/8080/](https://didiermejia.github.io/8080/)
+
 ## Descripción
 
 El Intel 8080 es un procesador de 8 bits que no cuenta con una unidad de punto flotante integrada.
